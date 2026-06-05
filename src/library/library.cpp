@@ -21,6 +21,7 @@
 #include "library/mixxxlibraryfeature.h"
 #include "library/recording/recordingfeature.h"
 #include "library/rekordbox/rekordboxfeature.h"
+#include "library/rekordboxdirect/RekordboxDirectFeature.h"
 #include "library/rhythmbox/rhythmboxfeature.h"
 #include "library/serato/seratofeature.h"
 #include "library/sidebarmodel.h"
@@ -212,6 +213,11 @@ Library::Library(
     if (m_pConfig->getValue(
                 ConfigKey(kConfigGroup, "ShowRekordboxLibrary"), true)) {
         addFeature(new RekordboxFeature(this, m_pConfig));
+    }
+
+    // RAIDJ: Rekordbox local collection (master.db) direct import
+    if (RekordboxDirectFeature::isSupported()) {
+        addFeature(new RekordboxDirectFeature(this, m_pConfig));
     }
 
     if (m_pConfig->getValue(
