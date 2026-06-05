@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
+#include <QProcessEnvironment>
 
 QString RekordboxDirectReader::s_lastError;
 
@@ -14,11 +15,8 @@ QString RekordboxDirectReader::lastError() {
 }
 
 QString RekordboxDirectReader::findPythonScript() {
-    // Look for rekordbox_export.py relative to the application binary.
     QDir appDir(QCoreApplication::applicationDirPath());
     const QString relPath = QStringLiteral("tools/rekordbox_export.py");
-
-    // Traverse up to find the repo root (dev build layout).
     QDir dir = appDir;
     for (int i = 0; i < 5; ++i) {
         if (dir.exists(relPath)) {
@@ -31,16 +29,22 @@ QString RekordboxDirectReader::findPythonScript() {
     return QString();
 }
 
-QString RekordboxDirectReader::runScript(const QStringList& args, QString* pError) {
+// Returns the raw UTF-8 JSON bytes from the script, skipping debug lines.
+QByteArray RekordboxDirectReader::runScript(const QStringList& args, QString* pError) {
     const QString scriptPath = findPythonScript();
     if (scriptPath.isEmpty()) {
         if (pError) {
             *pError = QStringLiteral("rekordbox_export.py not found");
         }
-        return QString();
+        return {};
     }
 
     QProcess process;
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    // Force Python to use UTF-8 for stdout on Windows (avoids CP932 encoding).
+    env.insert(QStringLiteral("PYTHONUTF8"), QStringLiteral("1"));
+    env.insert(QStringLiteral("PYTHONIOENCODING"), QStringLiteral("utf-8"));
+    process.setProcessEnvironment(env);
     process.setProgram(QStringLiteral("python"));
     process.setArguments(QStringList{scriptPath} + args);
     process.start();
@@ -50,30 +54,30 @@ QString RekordboxDirectReader::runScript(const QStringList& args, QString* pErro
             *pError = QStringLiteral("rekordbox_export.py timed out");
         }
         process.kill();
-        return QString();
+        return {};
     }
 
     if (process.exitCode() != 0) {
         if (pError) {
             *pError = QString::fromUtf8(process.readAllStandardError());
         }
-        return QString();
+        return {};
     }
 
-    // pyrekordbox outputs a debug `{}` line before the real JSON.
-    // Find the line that starts with the actual JSON payload.
+    // pyrekordbox prints a debug `{}` line before the real JSON.
+    // Find the first line that is a non-empty JSON object.
     const QByteArray output = process.readAllStandardOutput();
     for (const QByteArray& line : output.split('\n')) {
         const QByteArray trimmed = line.trimmed();
         if (trimmed.startsWith('{') && trimmed.size() > 2) {
-            return QString::fromUtf8(trimmed);
+            return trimmed; // raw UTF-8
         }
     }
 
     if (pError) {
         *pError = QStringLiteral("No valid JSON in rekordbox_export.py output");
     }
-    return QString();
+    return {};
 }
 
 RekordboxCue RekordboxDirectReader::parseCueJson(const QJsonObject& obj) {
@@ -125,14 +129,14 @@ QList<RekordboxTrack> RekordboxDirectReader::readAllTracks(const QString& dbPath
     }
 
     QString error;
-    const QString json = runScript(args, &error);
+    const QByteArray json = runScript(args, &error);
     if (json.isEmpty()) {
         s_lastError = error;
         return {};
     }
 
     QJsonParseError parseError;
-    const QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8(), &parseError);
+    const QJsonDocument doc = QJsonDocument::fromJson(json, &parseError);
     if (parseError.error != QJsonParseError::NoError) {
         s_lastError = parseError.errorString();
         return {};
@@ -157,14 +161,14 @@ bool RekordboxDirectReader::readSingleTrack(
     }
 
     QString error;
-    const QString json = runScript(args, &error);
+    const QByteArray json = runScript(args, &error);
     if (json.isEmpty()) {
         s_lastError = error;
         return false;
     }
 
     QJsonParseError parseError;
-    const QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8(), &parseError);
+    const QJsonDocument doc = QJsonDocument::fromJson(json, &parseError);
     if (parseError.error != QJsonParseError::NoError) {
         s_lastError = parseError.errorString();
         return false;

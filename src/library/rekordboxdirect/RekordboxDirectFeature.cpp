@@ -58,6 +58,7 @@ void RekordboxDirectFeature::bindLibraryWidget(
     pBrowser->setHtml(QStringLiteral(
             "<h2>Rekordbox Collection</h2>"
             "<p>Loading tracks from Rekordbox database...</p>"));
+    m_pBrowser = pBrowser.get();
     libraryWidget->registerView(QLatin1String(kViewName), pBrowser);
 }
 
@@ -91,8 +92,9 @@ void RekordboxDirectFeature::onTracksLoaded() {
 }
 
 void RekordboxDirectFeature::showTracks(const QList<RekordboxTrack>& tracks) {
-    // In Phase 1 we emit the HTML view; a proper track table model
-    // will be added in Phase 2.
+    if (m_pBrowser) {
+        m_pBrowser->setHtml(formatHtmlView(tracks));
+    }
     emit switchToView(QLatin1String(kViewName));
 }
 

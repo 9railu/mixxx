@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QByteArray>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QList>
@@ -51,7 +52,7 @@ class RekordboxDirectReader {
     static RekordboxTrack parseTrackJson(const QJsonObject& obj);
     static RekordboxCue parseCueJson(const QJsonObject& obj);
     static QString findPythonScript();
-    static QString runScript(const QStringList& args, QString* pError);
+    static QByteArray runScript(const QStringList& args, QString* pError);
 
     static QString s_lastError;
 };

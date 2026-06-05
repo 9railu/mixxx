@@ -9,6 +9,7 @@
 #include "library/treeitemmodel.h"
 #include "preferences/usersettings.h"
 #include "util/parented_ptr.h"
+#include "widget/wlibrarytextbrowser.h"
 
 class Library;
 class WLibrary;
@@ -46,5 +47,6 @@ class RekordboxDirectFeature : public LibraryFeature {
     QFutureWatcher<QList<RekordboxTrack>> m_futureWatcher;
     QFuture<QList<RekordboxTrack>> m_future;
 
+    QPointer<WLibraryTextBrowser> m_pBrowser;
     QString m_title;
 };
