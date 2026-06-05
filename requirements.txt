@@ -1,0 +1,6 @@
+# RAIDJ Python dependencies
+# インストール: pip install -r requirements.txt
+# 更新確認:    pip install -U -r requirements.txt
+
+yt-dlp
+pyrekordbox
