@@ -8,7 +8,7 @@
 | ツール | バージョン | 備考 |
 |---|---|---|
 | Windows | 11 | 確認済み環境 |
-| Visual Studio | 2022 以上 | C++ ワークロード必須 |
+| Visual Studio | 2022 以上（2026 も可） | C++ ワークロード必須。2026 の場合は MSVC v143 または v144 ツールセットを追加インストール |
 | Git | 最新 | |
 | CMake | 3.21 以上 | VS インストーラーから入れられる |
 | Python | 3.10 以上 | yt-dlp・pyrekordbox 用 |
@@ -23,29 +23,43 @@ Visual Studio Installer を開き、以下のワークロードにチェック�
 ```
 ☑ C++ によるデスクトップ開発
   └ 個別コンポーネント：
-    ☑ MSVC v143（最新）
+    ☑ MSVC v143 または v144（VS 2026 の場合は v144 で可）
     ☑ Windows 11 SDK（最新）
     ☑ CMake ツール for Visual Studio
-    ☑ vcpkg パッケージマネージャー（統合）
 ```
+
+> ⚠️ VS 2026（バージョン 18）を使う場合：
+> 「個別のコンポーネント」タブで「MSVC v143」または「MSVC v144」を追加インストールする。
+> vcpkg は Mixxx の buildenv に内包されているため、別途インストール不要。
+
+**実際の確認環境：VS 2026 Community + MSVC v144（14.44）で動作確認済み**
 
 ---
 
-## Step 2：vcpkg のセットアップ
+## Step 2：Mixxx 標準依存環境のセットアップ
+
+> ⚠️ Mixxx は vcpkg を独自管理している。別途 vcpkg をインストールする必要はない。
+
+以下の順で実施する：
+
+### 2-A：buildenv スクリプトで CMakeSettings.json を生成
 
 ```powershell
-# vcpkg を任意の場所にクローン（例：C:\vcpkg）
-git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
-cd C:\vcpkg
-.\bootstrap-vcpkg.bat
-
-# Visual Studio との統合
-.\vcpkg integrate install
+# PowerShell から実行
+cmd /c "cd /d C:\Users\<your>\RAIDJ && tools\windows_buildenv.bat setup"
 ```
 
-環境変数を設定（システム環境変数に追加）：
-```
-VCPKG_ROOT = C:\vcpkg
+### 2-B：依存環境 zip をダウンロード・展開
+
+```powershell
+# buildenv フォルダ作成
+New-Item -ItemType Directory -Force "RAIDJ\buildenv"
+
+# ダウンロード（約 1.5GB）
+Invoke-WebRequest -Uri "https://downloads.mixxx.org/dependencies/2.6/Windows/mixxx-deps-2.6-x64-windows-aa78b5a.zip" -OutFile "RAIDJ\buildenv\mixxx-deps-2.6-x64-windows-aa78b5a.zip"
+
+# 展開
+Expand-Archive -Path "RAIDJ\buildenv\mixxx-deps-2.6-x64-windows-aa78b5a.zip" -DestinationPath "RAIDJ\buildenv" -Force
 ```
 
 ---
@@ -82,41 +96,65 @@ git commit -m "Add RAIDJ project documentation"
 
 ---
 
-## Step 4：Mixxx 公式スクリプトで標準依存をインストール
+## Step 4：CMake 構成とビルド
 
-> ⚠️ Mixxx は独自の依存管理スクリプトを使用している。vcpkg と混在させると競合するため、
-> Mixxx 標準依存は公式スクリプト経由でインストールし、RAIDJ 追加分のみ vcpkg で管理する。
+> ⚠️ Mixxx 標準依存は Step 2 の buildenv zip に全て含まれている。
+> 別途 vcpkg を用意する必要はない（RAIDJ 追加依存はフェーズ2以降で個別対応）。
 
-```powershell
-cd RAIDJ
+### 4-A：CMake 構成
 
-# Mixxx 公式の Windows 依存ビルドスクリプトを実行
-# （Qt6・portaudio・libsndfile・taglib・FFmpeg 等を一括取得）
-python tools/buildenv.py --download-only
+`raidj_cmake_configure.bat` を使う（リポジトリに含まれている）：
+
+```bat
+@echo off
+call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvarsall.bat" x64 -vcvars_ver=14.44
+cd /d C:\Users\<your>\RAIDJ
+cmake -B build\x64__off -S . -G Ninja ^
+  --toolchain buildenv\mixxx-deps-2.6-x64-windows-aa78b5a\scripts\buildsystems\vcpkg.cmake ^
+  -DVCPKG_TARGET_TRIPLET=x64-windows ^
+  -DMIXXX_VCPKG_ROOT=C:\Users\<your>\RAIDJ\buildenv\mixxx-deps-2.6-x64-windows-aa78b5a ^
+  -DQT6=ON ^
+  -DKEYFINDER=OFF ^
+  -DOPTIMIZE=off ^
+  -DBROADCAST=OFF
 ```
 
-完了後、`build/` 以下に依存ライブラリが展開される。
+> `BROADCAST=OFF`：libshout-idjc の `ssize_t` が MSVC 非対応のため無効化。
+> RAIDJ では NDI/OBS 連携を使うため Shoutcast 配信機能は不要。
 
-**RAIDJ 追加依存のみ vcpkg で管理：**
+PowerShell から実行：
 ```powershell
-cd C:\vcpkg
+& "C:\Users\<your>\RAIDJ\raidj_cmake_configure.bat"
+```
 
-# ONNX Runtime（Demucs ステム分離）
-.\vcpkg install onnxruntime:x64-windows
+### 4-B：ビルド
 
-# OpenSSL（qsqlcipher-qt6 のビルドに必須）
-.\vcpkg install openssl:x64-windows
+`raidj_build.bat` を実行（リポジトリに含まれている）：
 
+```powershell
+& "C:\Users\<your>\RAIDJ\raidj_build.bat"
+```
+
+ビルド完了後、`build\x64__off\mixxx.exe` が生成される（約 30〜60 分）。
+
+> ✅ 動作確認済み：VS 2026 + MSVC v144 で 870/870 ビルド成功
+
+---
+
+## Step 4（旧）：RAIDJ 追加依存（フェーズ2以降）
+
+以下はフェーズ2以降で追加する。現時点では不要。
+
+```powershell
 # SQLCipher（Rekordbox master.db の暗号化解除）
 # ⚠️ 通常の SQLite3 と同時リンク不可。qsqlcipher-qt6 プラグインで差し替える方式を採用
-.\vcpkg install sqlcipher:x64-windows
 
 # qsqlcipher-qt6（Qt6 の SQLite ドライバーを SQLCipher に差し替え）
 # → mixxxdb.sqlite（暗号化なし）と master.db（暗号化あり）を同一ドライバーで扱える
 git clone https://github.com/chehrlic/qsqlcipher-qt6.git C:\qsqlcipher-qt6
 cd C:\qsqlcipher-qt6
 cmake -B build `
-  -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake `
+  -DCMAKE_TOOLCHAIN_FILE=C:\Users\<your>\RAIDJ\buildenv\mixxx-deps-2.6-x64-windows-aa78b5a\scripts\buildsystems\vcpkg.cmake `
   -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
 
