@@ -3398,6 +3398,34 @@ if(KEYFINDER)
   target_compile_definitions(mixxx-lib PUBLIC __KEYFINDER__)
 endif()
 
+# Essentia (RAIDJ BPM/Key analysis)
+set(ESSENTIA_INSTALL_DIR "C:/Users/ts060/claude/essentia/install" CACHE PATH "Essentia install directory")
+set(ESSENTIA_DEPS_DIR "C:/Users/ts060/claude/essentia/packaging/msvc" CACHE PATH "Essentia deps directory")
+if(EXISTS "${ESSENTIA_INSTALL_DIR}/lib/essentia.lib")
+  add_library(raidj-essentia STATIC IMPORTED)
+  set_target_properties(raidj-essentia PROPERTIES
+    IMPORTED_LOCATION "${ESSENTIA_INSTALL_DIR}/lib/essentia.lib"
+    INTERFACE_INCLUDE_DIRECTORIES "${ESSENTIA_INSTALL_DIR}/include;${ESSENTIA_DEPS_DIR}/include;${ESSENTIA_DEPS_DIR}/include/eigen3"
+  )
+  target_sources(mixxx-lib PRIVATE
+    src/analyzer/essentia/EssentiaAnalyzer.cpp
+  )
+  target_link_libraries(mixxx-lib PRIVATE
+    raidj-essentia
+    "${ESSENTIA_DEPS_DIR}/lib/fftw3f.lib"
+    "${ESSENTIA_DEPS_DIR}/lib/samplerate.lib"
+    "${ESSENTIA_DEPS_DIR}/lib/chromaprint.lib"
+    "${ESSENTIA_DEPS_DIR}/lib/yaml.lib"
+    bcrypt.lib
+  )
+  # TagLib: Essentia を -DTaglib_DIR=NOTFOUND で再ビルドし MetadataReader の TagLib 依存を除去
+  # FFmpeg: Essentia の静的 FFmpeg は Mixxx の共有 FFmpeg と重複するため除外
+  target_compile_definitions(mixxx-lib PUBLIC RAIDJ_ESSENTIA)
+  message(STATUS "RAIDJ: Essentia BPM/Key analysis enabled")
+else()
+  message(STATUS "RAIDJ: Essentia not found at ${ESSENTIA_INSTALL_DIR}, BPM/Key analysis disabled")
+endif()
+
 # FLAC
 find_package(FLAC REQUIRED)
 target_link_libraries(mixxx-lib PRIVATE FLAC::FLAC)

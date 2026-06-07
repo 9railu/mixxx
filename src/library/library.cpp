@@ -23,6 +23,9 @@
 #include "library/rekordbox/rekordboxfeature.h"
 #include "library/rekordboxdirect/RekordboxDirectFeature.h"
 #include "library/youtube/YoutubeFeature.h"
+#ifdef RAIDJ_ESSENTIA
+#include "analyzer/essentia/EssentiaAnalyzer.h"
+#endif
 #include "library/rhythmbox/rhythmboxfeature.h"
 #include "library/serato/seratofeature.h"
 #include "library/sidebarmodel.h"
@@ -217,6 +220,9 @@ Library::Library(
     }
 
     // RAIDJ: Rekordbox local collection (master.db) direct import
+#ifdef RAIDJ_ESSENTIA
+    EssentiaAnalyzer::init();
+#endif
     if (RekordboxDirectFeature::isSupported()) {
         addFeature(new RekordboxDirectFeature(this, m_pConfig));
     }
@@ -281,7 +287,11 @@ Library::Library(
             kEditMetadataSelectedClickDefault);
 }
 
-Library::~Library() = default;
+Library::~Library() {
+#ifdef RAIDJ_ESSENTIA
+    EssentiaAnalyzer::shutdown();
+#endif
+}
 
 TrackCollectionManager* Library::trackCollectionManager() const {
     // Cannot be implemented inline due to forward declarations
