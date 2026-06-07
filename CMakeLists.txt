@@ -1402,8 +1402,10 @@ add_library(
   src/library/recording/dlgrecording.ui
   src/library/recording/recordingfeature.cpp
   src/library/rekordbox/rekordboxfeature.cpp
+  src/library/rekordboxdirect/RekordboxCueBarDelegate.cpp
   src/library/rekordboxdirect/RekordboxDirectFeature.cpp
   src/library/rekordboxdirect/RekordboxDirectReader.cpp
+  src/library/rekordboxdirect/RekordboxDirectTrackModel.cpp
   src/library/youtube/YoutubeFeature.cpp
   src/library/youtube/YoutubeTrackModel.cpp
   src/library/rhythmbox/rhythmboxfeature.cpp

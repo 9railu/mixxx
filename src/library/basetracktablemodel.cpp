@@ -396,6 +396,11 @@ QAbstractItemDelegate* BaseTrackTableModel::delegateForColumn(
                 &OverviewDelegate::slotInhibitLazyLoading);
         return pOverviewDelegate;
     }
+    // Allow subclasses to provide delegates for additional columns.
+    QAbstractItemDelegate* pAdditional = additionalDelegateForColumn(index, pParent);
+    if (pAdditional) {
+        return pAdditional;
+    }
     return new DefaultDelegate(pTableView);
 }
 

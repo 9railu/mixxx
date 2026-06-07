@@ -133,6 +133,15 @@ class BaseTrackTableModel : public QAbstractTableModel, public TrackModel {
     static void setApplyPlayedTrackColor(bool apply);
 
   protected:
+    // Override to provide delegates for additional non-standard columns.
+    // Called by delegateForColumn() when no standard delegate matches.
+    virtual QAbstractItemDelegate* additionalDelegateForColumn(
+            int column, QObject* pParent) {
+        Q_UNUSED(column);
+        Q_UNUSED(pParent);
+        return nullptr;
+    }
+
     // Build a map from the column names to their indices
     // used by fieldIndex().
     void initTableColumnsAndHeaderProperties(
