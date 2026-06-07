@@ -1404,6 +1404,8 @@ add_library(
   src/library/rekordbox/rekordboxfeature.cpp
   src/library/rekordboxdirect/RekordboxDirectFeature.cpp
   src/library/rekordboxdirect/RekordboxDirectReader.cpp
+  src/library/youtube/YoutubeFeature.cpp
+  src/library/youtube/YoutubeTrackModel.cpp
   src/library/rhythmbox/rhythmboxfeature.cpp
   src/library/scanner/importfilestask.cpp
   src/library/scanner/libraryscanner.cpp

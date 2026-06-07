@@ -22,6 +22,7 @@
 #include "library/recording/recordingfeature.h"
 #include "library/rekordbox/rekordboxfeature.h"
 #include "library/rekordboxdirect/RekordboxDirectFeature.h"
+#include "library/youtube/YoutubeFeature.h"
 #include "library/rhythmbox/rhythmboxfeature.h"
 #include "library/serato/seratofeature.h"
 #include "library/sidebarmodel.h"
@@ -219,6 +220,9 @@ Library::Library(
     if (RekordboxDirectFeature::isSupported()) {
         addFeature(new RekordboxDirectFeature(this, m_pConfig));
     }
+
+    // RAIDJ: YouTube download via yt-dlp
+    addFeature(new YoutubeFeature(this, m_pConfig));
 
     if (m_pConfig->getValue(
                 ConfigKey(kConfigGroup, "ShowSeratoLibrary"), true)) {
